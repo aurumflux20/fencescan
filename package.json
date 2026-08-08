@@ -1,0 +1,48 @@
+{
+  "name": "fencescan",
+  "version": "0.1.0",
+  "description": "Find tool calls that could fire the same effect twice. Reports evidence, renders no verdict. Zero dependencies.",
+  "keywords": [
+    "mcp",
+    "idempotency",
+    "exactly-once",
+    "audit",
+    "static-analysis",
+    "agent",
+    "duplicate",
+    "side-effects"
+  ],
+  "license": "MIT",
+  "author": "A. Kaur (AurumFlux)",
+  "homepage": "https://github.com/aurumflux20/fencescan#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aurumflux20/fencescan.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aurumflux20/fencescan/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "bin": {
+    "fencescan": "bin/fencescan.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "test": "node --experimental-strip-types --no-warnings --test test/ground-truth.test.ts",
+    "prepublishOnly": "npm run clean && npm run build && npm test"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
