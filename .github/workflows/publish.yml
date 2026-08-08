@@ -1,0 +1,73 @@
+name: publish
+
+# Publishes via OIDC trusted publishing -- no npm token exists anywhere, and no
+# security key tap is needed. Local `npm publish` requires an interactive 2FA
+# approval whose session repeatedly expired before it could be completed; CI
+# removes the human step entirely rather than retrying a flaky one.
+#
+# Separate from ci.yml on purpose: CI runs on pull requests including from
+# forks, and publish rights must never be reachable from a stranger's PR.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC; npm rejects the publish without it
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+
+      # Everything below runs BEFORE publish; any failure aborts it.
+      - name: Typecheck + build
+        run: npx tsc -p tsconfig.json
+
+      - name: Fixture tests
+        run: npm test
+
+      # The bug that nearly shipped in 0.1.0: raw .ts works in development and
+      # Node refuses to strip types under node_modules, so it dies for every
+      # consumer. Prove the PACKED artifact runs, not the working copy.
+      - name: The packed tarball must actually run
+        run: |
+          set -euo pipefail
+          npm pack
+          mkdir -p /tmp/consumer && cd /tmp/consumer
+          npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE"/fencescan-*.tgz
+          ./node_modules/.bin/fencescan "$GITHUB_WORKSPACE" > out.txt
+          grep -q "tool declarations found" out.txt
+
+      - name: Version must match the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          [ "$TAG" = "$PKG" ] || { echo "tag v$TAG != package.json $PKG" >&2; exit 1; }
+
+      # No NODE_AUTH_TOKEN. The OIDC exchange authenticates us.
+      - name: Publish
+        run: npm publish --access public
+
+      - name: Verify it resolves from the registry
+        run: |
+          set -euo pipefail
+          PKG="$(node -p "require('./package.json').version")"
+          for i in 1 2 3 4 5 6; do
+            if npm view "fencescan@$PKG" version >/dev/null 2>&1; then
+              echo "fencescan@$PKG is live"; exit 0
+            fi
+            echo "not visible yet ($i/6)"; sleep 10
+          done
+          echo "published but not resolvable after 60s" >&2; exit 1
