@@ -1,0 +1,33 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["22.x", "24.x"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ matrix.node }}" }
+      - run: npm ci
+      - name: Typecheck + build
+        run: npx tsc -p tsconfig.json
+      - name: Fixture tests
+        run: npm test
+      # A package of raw .ts works in development and crashes for every
+      # consumer, because Node refuses to strip types under node_modules.
+      # This proves the PUBLISHED artifact runs, not the working copy.
+      - name: The packed tarball must actually run
+        run: |
+          set -euo pipefail
+          npm pack
+          mkdir -p /tmp/consumer && cd /tmp/consumer
+          npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE"/fencescan-*.tgz
+          ./node_modules/.bin/fencescan "$GITHUB_WORKSPACE" > out.txt
+          grep -q "tool declarations found" out.txt
+          echo "packaged CLI ran successfully"
