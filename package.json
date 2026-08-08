@@ -1,6 +1,6 @@
 {
   "name": "fencescan",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Find tool calls that could fire the same effect twice. Reports evidence, renders no verdict. Zero dependencies.",
   "keywords": [
     "mcp",

@@ -154,10 +154,32 @@ export function scan(root: string): Report {
 
     TOOLNAME.lastIndex = 0;
     for (let m = TOOLNAME.exec(txt); m; m = TOOLNAME.exec(txt)) {
-      const nm = m.slice(1).find(Boolean);
+      const groupIndex = m.slice(1).findIndex(Boolean);
+      const nm = m[groupIndex + 1];
       if (!nm || tools.has(nm)) continue;
       const block = ownBlock(txt, m.index);
-      if (!/(description|handler|inputSchema|input_schema|callback|execute|async)/i.test(block)) continue;
+
+      // Group 0 is the generic `name: "..."` alternative -- the only one loose
+      // enough to match a plain object that has nothing to do with a tool. A
+      // package.json-style manifest has `name` right beside `description`,
+      // which false-matched yahoo-finance2's OWN build script as a tool called
+      // "yahoo-finance2". The other alternatives (registerTool(, Tool(,
+      // @mcp.tool, @tool() are SDK call syntax that essentially never appears
+      // outside a real tool declaration, so they are trusted on their own
+      // syntax rather than re-gated on nearby words.
+      if (groupIndex === 0) {
+        // Some SDKs pass the handler as a THIRD positional argument, outside
+        // the config object: registerTool("x", { description: "..." }, fn). A
+        // tool with only a description and no inputSchema is legal and common,
+        // so look a little past the object too -- capped tightly so this
+        // cannot bleed into the next declaration, the bug that produced most
+        // of v1's false positives.
+        const tail = txt.slice(m.index + block.length, m.index + block.length + 200);
+        const nextDecl = tail.search(/registerTool\(|@mcp\.tool|@tool\(|\bTool\(/);
+        const window = block + (nextDecl === -1 ? tail : tail.slice(0, nextDecl));
+        if (!/(handler|inputSchema|input_schema|callback|execute|async|=>)/i.test(window)) continue;
+      }
+
       tools.set(nm, { file: rel, line: txt.slice(0, m.index).split("\n").length, block });
     }
 

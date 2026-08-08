@@ -4,10 +4,13 @@
  * need the network, and the repos it was calibrated against can change.
  *
  * The real-repo results these fixtures stand in for, hand-verified:
- *   devotel    32 guards / 41 writes  -> reads as "they built it properly"
- *   devsjony    0 guards /  1 write   -> surfaces as a genuine candidate
- *   amalo       read-only tools       -> must not dominate the candidate list
- *   metaads    59 writes              -> writes found in shared helpers
+ *   devotel        32 guards / 41 writes  -> reads as "they built it properly"
+ *   devsjony        0 guards /  1 write   -> surfaces as a genuine candidate
+ *   amalo           read-only tools       -> must not dominate the candidate list
+ *   metaads        59 writes              -> writes found in shared helpers
+ *   yahoo-finance2  a package.json "name" -> flagged as a tool. Real bug, shipped
+ *                                            in 0.1.0, caught auditing the first
+ *                                            real production scan the next day.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -128,6 +131,57 @@ test("money-shaped tools sort above other effects", () => {
     const r = scan(dir);
     assert.ok(r.candidates.length >= 2);
     assert.equal(r.candidates[0]?.tool, "refundCharge", "money should rank first");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a package manifest's name+description is not mistaken for a tool", () => {
+  // THE BUG, shipped in 0.1.0: the gate accepted "description" alone as proof
+  // of a tool declaration. Every npm/PyPI manifest has a description right
+  // next to its name field. This exact shape -- caught scanning a real repo
+  // the day after publish -- flagged yahoo-finance2's own build_npm.ts as a
+  // tool called "yahoo-finance2" with zero actual write behaviour.
+  const dir = fixture({
+    "scripts/build_npm.ts": `
+      export default {
+        outDir: "./npm",
+        package: {
+          name: "some-real-library",
+          version: "0.0.1",
+          description: "Does something entirely unrelated to MCP tools",
+          license: "MIT",
+        },
+      };
+    `,
+  });
+  try {
+    const r = scan(dir);
+    assert.equal(
+      r.candidates.length,
+      0,
+      `a package manifest must not be flagged as a tool: ${JSON.stringify(r.candidates)}`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a real tool WITH a description is still found (the fix must not overcorrect)", () => {
+  const dir = fixture({
+    "s.ts": `
+      server.registerTool("chargeCard", {
+        description: "Charge the customer's card.",
+        inputSchema: { amount: z.string() },
+      }, async ({ amount }) => api.post("/charge", { amount }));
+    `,
+  });
+  try {
+    const r = scan(dir);
+    assert.ok(
+      r.candidates.some((c) => c.tool === "chargeCard"),
+      "a real tool with inputSchema must still be found after tightening the gate",
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
