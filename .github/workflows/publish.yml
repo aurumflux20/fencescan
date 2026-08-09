@@ -26,6 +26,12 @@ jobs:
         with:
           node-version: "22.x"
           registry-url: "https://registry.npmjs.org"
+      # Trusted publishing needs npm 11.5.1+. Node 22.x can bundle an older npm
+      # depending on which patch release the runner has, and an outdated npm
+      # falls back to a bogus token-auth attempt instead of OIDC -- which is
+      # what a 404 here actually means, not "not registered".
+      - run: npm install -g npm@latest
+      - run: npm --version
       - run: npm ci
 
       # Everything below runs BEFORE publish; any failure aborts it.
