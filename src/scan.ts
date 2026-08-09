@@ -81,6 +81,27 @@ const WRITE_CALL =
 
 const STRLIT = /"[^"]*"|'[^']*'|`[^`]*`/g;
 
+/**
+ * `\bget\b` does not match "get_release_open_bugs" or "getReleaseOpenBugs" --
+ * `_` and a capital letter are both \w, so there is no boundary for \b to find.
+ * That silently broke the READ veto for almost every real tool name, since
+ * compound identifiers (snake_case, camelCase) are the norm, not the
+ * exception. Same root cause as the GUARD anchor bug fixed earlier, opposite
+ * direction: this widens matching, that one needed no boundaries at all.
+ *
+ * The fix here is NOT "drop the anchors" -- READ/EFFECT/MONEY have to match
+ * whole English words (get, list, pay), and bare substring matching would
+ * wrongly fire "pay" inside "display" or "get" inside "budget". Instead,
+ * split the identifier into words at underscores/hyphens and camelCase
+ * boundaries, so the existing \b-anchored regexes see real delimiters.
+ */
+function splitIdentifierWords(name: string): string {
+  return name
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase();
+}
+
 /** Tool declarations across the common MCP SDKs and decorators. */
 const TOOLNAME = new RegExp(
   [
@@ -198,13 +219,14 @@ export function scan(root: string): Report {
   const candidates: Finding[] = [];
   for (const [tool, t] of tools) {
     // A read verb in the NAME vetoes effect words found anywhere in the block.
-    if (READ.test(tool) && !MONEY.test(tool)) continue;
-    if (!EFFECT.test(tool) && !EFFECT.test(t.block)) continue;
+    const words = splitIdentifierWords(tool);
+    if (READ.test(words) && !MONEY.test(words)) continue;
+    if (!EFFECT.test(words) && !EFFECT.test(t.block)) continue;
     candidates.push({
       tool,
       file: t.file,
       line: t.line,
-      money: MONEY.test(tool) || MONEY.test(t.block),
+      money: MONEY.test(words) || MONEY.test(t.block),
       writesInSameFile: writes.filter((w) => w.file === t.file).length,
     });
   }
