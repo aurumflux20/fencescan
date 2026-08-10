@@ -42,11 +42,17 @@ if (!statSync(target).isDirectory()) {
 
 const r = scan(target);
 
+// process.exit() right after console.log truncates stdout at the 64KB pipe
+// buffer on large outputs — the --json report arrived cut mid-string (found
+// by our own scan pipeline, Aug 10). No explicit exit on success paths: let
+// the process drain stdout and exit naturally.
 if (asJson) {
   console.log(JSON.stringify(r, null, 2));
-  process.exit(0);
+} else {
+  report(r);
 }
 
+function report(r) {
 console.log(`\n${b("fencescan")} ${dim(r.root)}`);
 console.log(dim(`${r.filesScanned} files · ${r.toolsDeclared} tool declarations found\n`));
 
@@ -54,13 +60,13 @@ if (r.toolsDeclared === 0) {
   console.log("No tool declarations recognised here.");
   console.log(dim("fencescan looks for MCP-style tools (registerTool, @mcp.tool, Tool(...))."));
   console.log(dim("If this is an MCP server and nothing was found, that's a bug — please report it."));
-  process.exit(0);
+  return;
 }
 
 if (r.candidates.length === 0) {
   console.log(g("No tools look like they cause an irreversible effect."));
   console.log(dim("That is the scan finding nothing, not a guarantee of safety.\n"));
-  process.exit(0);
+  return;
 }
 
 const money = r.candidates.filter((c) => c.money);
@@ -104,3 +110,4 @@ console.log(
   `\n${dim("Open each candidate and ask: if this ran twice, would anyone notice?")}` +
     `\n${dim("Fixes and background: https://github.com/aurumflux20/effectfence")}\n`,
 );
+}
