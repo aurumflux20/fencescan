@@ -72,6 +72,20 @@ findings are for a human to read, not for a build to fail on.
 Recognises MCP-style tool declarations (`registerTool`, `@mcp.tool`, `Tool(...)`,
 `@tool`) across TypeScript, JavaScript, Python, Go, Rust, Java and Ruby.
 
+## If it finds nothing
+
+A clean scan prints a badge you can paste into your README:
+
+[![fencescan: 0 candidates](https://img.shields.io/badge/fencescan-0_candidates-brightgreen)](https://github.com/aurumflux20/fencescan)
+
+```markdown
+[![fencescan: 0 candidates](https://img.shields.io/badge/fencescan-0_candidates-brightgreen)](https://github.com/aurumflux20/fencescan)
+```
+
+It claims exactly what happened — the scan found zero candidates — and nothing
+more. Not "safe": that is a claim no scanner can make, since the guard may live
+in a service it cannot read. Anyone can re-run `npx fencescan` to check you.
+
 ## If it finds something
 
 Open each candidate and ask one question: **if this ran twice, would anyone
