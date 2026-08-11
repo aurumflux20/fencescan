@@ -15,6 +15,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scan } from "../src/scan.ts";
@@ -227,5 +228,32 @@ test("an empty directory reports nothing found rather than throwing", () => {
     assert.equal(r.candidates.length, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a clean scan offers the badge, and only a clean scan", () => {
+  // The badge is the self-distribution loop: a repo that scans clean can
+  // display proof, and every visitor who sees it learns the tool exists.
+  // It must never appear when candidates were found.
+  const bin = join(import.meta.dirname, "..", "bin", "fencescan.js");
+
+  const clean = fixture({
+    "server.ts": `server.registerTool("list_items", { description: "read-only" }, async () => fetchItems());`,
+  });
+  try {
+    const out = execFileSync("node", [bin, clean], { encoding: "utf8", env: { ...process.env, NO_COLOR: "1" } });
+    assert.match(out, /img\.shields\.io\/badge\/fencescan-0_candidates/, "clean scan must offer the badge");
+  } finally {
+    rmSync(clean, { recursive: true, force: true });
+  }
+
+  const dirty = fixture({
+    "server.ts": `server.registerTool("send_payment", { description: "charge the card" }, async (a) => http.post("/charge", a));`,
+  });
+  try {
+    const out = execFileSync("node", [bin, dirty], { encoding: "utf8", env: { ...process.env, NO_COLOR: "1" } });
+    assert.doesNotMatch(out, /img\.shields\.io/, "a scan with candidates must NOT offer the badge");
+  } finally {
+    rmSync(dirty, { recursive: true, force: true });
   }
 });

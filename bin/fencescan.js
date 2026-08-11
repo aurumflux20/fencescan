@@ -66,6 +66,15 @@ if (r.toolsDeclared === 0) {
 if (r.candidates.length === 0) {
   console.log(g("No tools look like they cause an irreversible effect."));
   console.log(dim("That is the scan finding nothing, not a guarantee of safety.\n"));
+  // The badge says exactly what is true — the scan found zero candidates —
+  // and nothing more. "Safe" would be a claim this tool cannot make.
+  console.log(b("Add the badge") + dim("  (paste into your README)"));
+  console.log(
+    "  [![fencescan: 0 candidates](https://img.shields.io/badge/fencescan-0_candidates-brightgreen)](https://github.com/aurumflux20/fencescan)",
+  );
+  console.log(
+    dim("  It tells your users someone checked the retry paths — and anyone can re-run `npx fencescan` to keep it honest.\n"),
+  );
   return;
 }
 
