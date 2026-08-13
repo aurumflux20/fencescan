@@ -1,0 +1,26 @@
+{
+  "corpus_version": "v1",
+  "collected": "2026-08-10/11",
+  "source": "npm packages keyworded mcp-server, cloned and read from source",
+  "repos_attempted": 755,
+  "repos_scanned": 671,
+  "repos_failed": 84,
+  "declared_tools": 27153,
+  "repos_with_writes": 539,
+  "pct_with_writes": 80.3,
+  "writers_with_zero_guards": 175,
+  "pct_writers_zero_guards": 32.5,
+  "writers_with_retry_loop": 229,
+  "repos_with_candidates": 470,
+  "patterns": {
+    "B_method_blind_retry": 63,
+    "C_control_unreachable": 14,
+    "A_fresh_randomness": 10
+  },
+  "downloads_buckets": {
+    "100k+": 4,
+    "10k-100k": 19,
+    "1k-10k": 191,
+    "1-1k": 457
+  }
+}
