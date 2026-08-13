@@ -99,6 +99,19 @@ exactly-once kernel for TypeScript and Python, and
 fences tool calls. Both free. If you'd rather someone did the work,
 [the Fence Audit](https://github.com/aurumflux20/effectfence/blob/main/SUPPORT.md).
 
+## How common is this, really?
+
+We pointed `fencescan` at **671 published MCP servers** (27,153 declared tools),
+read from source rather than from their READMEs. 80.3% do real writes; **32.5% of
+those show no idempotency guard of any kind.**
+
+The corpus is public — aggregate plus anonymized per-repo rows, Apache-2.0, with
+a section stating plainly what the data *cannot* tell you:
+[`docs/scan-dataset`](docs/scan-dataset). The 84 repos that failed to clone are
+counted as failures in their own column, never as zeros.
+
+Check it, quote it, or contradict it. Contradiction is the most useful reply.
+
 ## Licence
 
 MIT
